@@ -1,0 +1,2 @@
+# OpenScripty
+A screenwriting convention
