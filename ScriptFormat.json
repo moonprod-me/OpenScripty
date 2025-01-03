@@ -1,0 +1,82 @@
+[
+  {
+    "number": "Scene Number (e.g. Scene 1, Scene 1.1, Scene 2.32, etc)",
+    "name": "Scene Name",
+    "description": "Scene Description/Setting",
+    "elements": [
+      {
+        "type": "speech",
+        "name": "Speaker",
+        "description": "Description/Tone",
+        "dialog": "Dialog"
+      },
+      {
+        "type": "action",
+        "description": "Action"
+      }
+    ]
+  },
+  {
+    "number": "Example Scene 1.1",
+    "name": "The gang gets back together",
+    "description": "On a spooky october night, \"the gang\" is pondering on what to do.",
+    "elements": [
+      {
+        "type": "action",
+        "description": "The camera pans in on \"the gang\"."
+      },
+      {
+        "type": "speech",
+        "name": "Luke",
+        "description": "scared",
+        "dialog": "Do ghosts really exist?"
+      },
+      {
+        "type": "speech",
+        "name": "Adam",
+        "description": "confident",
+        "dialog": "No they don't"
+      },
+      {
+        "type": "action",
+        "description": "The camera pans to a ghost that promptly screams causing a chain reaction"
+      }
+    ]
+  },
+  {
+    "number": "Example Scene 1.2",
+    "name": "The fight",
+    "description": "\"The gang\" has finally calmed down, then they promptly start attacking the ghost.",
+    "elements": [
+      {
+        "type": "action",
+        "description": "Adam takes a swing on the ghost, making it bleed"
+      },
+      {
+        "type": "action",
+        "description": "Luke pisses his pants and runs to clean it up"
+      },
+      {
+        "type": "action",
+        "description": "Bethany kills the ghost with a knife"
+      },
+      {
+        "type": "speech",
+        "name": "Bethany",
+        "description": "proudly",
+        "dialog": "We're safe... for noww...."
+      }
+    ]
+  },
+  {
+    "number": "Scene 2",
+    "name": "The end",
+    "description": "It's the end of the episode",
+    "elements": [
+      {
+        "type": "action",
+        "description": "The scene fades to black"
+      }
+    ]
+  }
+]

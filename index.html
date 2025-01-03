@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scriptwriting Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        #toolbar {
+            background-color: #fff;
+            border-bottom: 1px solid #ccc;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        #toolbar button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #toolbar button:hover {
+            background-color: #0056b3;
+        }
+
+        #document {
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+        }
+
+        .scene {
+            margin: 20px 0;
+        }
+
+        .scene-header {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .scene-description {
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+
+        .input {
+            display: block;
+            width: 100%;
+            font-size: 1em;
+            margin: 5px 0;
+            outline: none;
+            border: none;
+            background: transparent;
+            color: #333;
+            font-family: inherit;
+        }
+
+        .input::placeholder {
+            color: #999;
+        }
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .add-icon {
+            font-size: 20px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: white;
+            box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-content button {
+            display: block;
+            background: none;
+            border: none;
+            padding: 10px 15px;
+            text-align: left;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .dropdown-content button:hover {
+            background-color: #f0f0f0;
+        }
+
+        .add-scene {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #28a745;
+            font-size: 24px;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .add-scene:hover {
+            background: #218838;
+        }
+
+        input {
+            display: block;
+            width: 100%;
+            font-size: 1em;
+            margin: 5px 0;
+            padding: 5px;
+            outline: none;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            color: #333;
+        }
+
+        input::placeholder {
+            color: #999;
+            font-style: italic;
+        }
+
+        input:disabled {
+            cursor: default;
+            color: #666;
+        }
+
+        button {
+            background-color: #007bff;
+            /* Primary Blue Background */
+            color: white;
+            /* White Text */
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            margin: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            /* Darker Blue on Hover */
+        }
+
+        /* Add Icon Button Styles */
+        .add-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            background-color: #28a745;
+            /* Green Background */
+            color: white;
+            /* White Text */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 5px;
+        }
+
+        .add-icon:hover {
+            background-color: #218838;
+            /* Darker Green on Hover */
+        }
+
+        /* Dropdown Button Styles */
+        .dropdown-content button {
+            width: 100%;
+            text-align: left;
+            background-color: #f8f9fa;
+            /* Light Gray Background */
+            color: #333;
+            /* Dark Gray Text */
+            font-size: 14px;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .dropdown-content button:hover {
+            background-color: #e2e6ea;
+            /* Slightly Darker Gray */
+            color: #0056b3;
+            /* Blue Text on Hover */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="toolbar">
+        <div>
+            <button id="export-json">Export JSON</button>
+            <button id="export-markdown">Export Markdown</button>
+            <button id="import-json">Import JSON</button>
+            <button id="toggle-preview">Preview</button>
+            <input type="file" id="file-input" style="display: none;">
+        </div>
+    </div>
+
+    <div id="document"></div>
+
+    <button class="add-scene" id="add-scene">+</button>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
