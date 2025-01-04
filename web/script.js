@@ -128,6 +128,36 @@ function renderDocument() {
       }
     });
 
+    if (!previewMode) {
+      const dropdownDiv = document.createElement("div");
+      dropdownDiv.className = "dropdown";
+      const addButton = document.createElement("button");
+      addButton.className = "add-icon";
+      addButton.textContent = "+";
+      addButton.onclick = () => {
+        dropdownDiv.querySelector(".dropdown-content").classList.toggle("show");
+      };
+      dropdownDiv.appendChild(addButton);
+      const dropdownContent = document.createElement("div");
+      dropdownContent.className = "dropdown-content";
+      const addSpeechButton = document.createElement("button");
+      addSpeechButton.textContent = "Add Speech";
+      addSpeechButton.onclick = () => {
+        scenes[sceneIndex].elements.push({ type: "speech", name: "", description: "", dialog: "" });
+        renderDocument();
+      };
+      const addActionButton = document.createElement("button");
+      addActionButton.textContent = "Add Action";
+      addActionButton.onclick = () => {
+        scenes[sceneIndex].elements.push({ type: "action", description: "" });
+        renderDocument();
+      };
+      dropdownContent.appendChild(addSpeechButton);
+      dropdownContent.appendChild(addActionButton);
+      dropdownDiv.appendChild(dropdownContent);
+      sceneDiv.appendChild(dropdownDiv);
+    }
+
     documentDiv.appendChild(sceneDiv);
   });
 }
