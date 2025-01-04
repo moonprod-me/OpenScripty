@@ -67,9 +67,8 @@ function renderDocument() {
       if (previewMode) {
         if (element.type === "speech") {
           const speechEl = document.createElement("p");
-          speechEl.innerHTML = `<strong>${element.name}</strong> ${
-            element.description ? `<i>(${element.description})</i>` : ""
-          }<br>"${element.dialog}"`;
+          speechEl.innerHTML = `<strong>${element.name}</strong> ${element.description ? `<i>(${element.description})</i>` : ""
+            }<br>"${element.dialog}"`;
           sceneDiv.appendChild(speechEl);
         } else if (element.type === "action") {
           const actionEl = document.createElement("p");
@@ -129,43 +128,6 @@ function renderDocument() {
       }
     });
 
-    // Add Button Dropdown
-    if (!previewMode) {
-      const dropdownDiv = document.createElement("div");
-      dropdownDiv.className = "dropdown";
-
-      const addButton = document.createElement("button");
-      addButton.className = "add-icon";
-      addButton.textContent = "+";
-      addButton.onclick = () => {
-        dropdownDiv.querySelector(".dropdown-content").classList.toggle("show");
-      };
-      dropdownDiv.appendChild(addButton);
-
-      const dropdownContent = document.createElement("div");
-      dropdownContent.className = "dropdown-content";
-
-      const addSpeechButton = document.createElement("button");
-      addSpeechButton.textContent = "Add Speech";
-      addSpeechButton.onclick = () => {
-        scenes[sceneIndex].elements.push({ type: "speech", name: "", description: "", dialog: "" });
-        renderDocument();
-      };
-
-      const addActionButton = document.createElement("button");
-      addActionButton.textContent = "Add Action";
-      addActionButton.onclick = () => {
-        scenes[sceneIndex].elements.push({ type: "action", description: "" });
-        renderDocument();
-      };
-
-      dropdownContent.appendChild(addSpeechButton);
-      dropdownContent.appendChild(addActionButton);
-      dropdownDiv.appendChild(dropdownContent);
-
-      sceneDiv.appendChild(dropdownDiv);
-    }
-
     documentDiv.appendChild(sceneDiv);
   });
 }
@@ -216,8 +178,7 @@ document.getElementById("export-markdown").onclick = () => {
   const markdown = scenes
     .map(
       (scene) =>
-        `# ${scene.number || `Scene ${scene.index + 1}`}: ${scene.name || "Untitled Scene"}\n${
-          scene.description ? `*${scene.description}*\n` : ""
+        `# ${scene.number || `Scene ${scene.index + 1}`}: ${scene.name || "Untitled Scene"}\n${scene.description ? `*${scene.description}*\n` : ""
         }` +
         scene.elements
           .map((el) =>
@@ -234,6 +195,82 @@ document.getElementById("export-markdown").onclick = () => {
   link.href = URL.createObjectURL(blob);
   link.download = "script.md";
   link.click();
+};
+
+// Import Edit Format
+document.getElementById("import-edit-format").onclick = () => {
+  const input = document.getElementById("edit-format-input").value;
+  if (input) {
+    const commands = input.split("¸");
+    let index = 0;
+
+    while (index < commands.length) {
+      const command = commands[index].trim();
+      if (!command) {
+        index++;
+        continue;
+      }
+
+      switch (command) {
+        case "AS": // Add Scene
+          const sceneNumber = commands[index + 1]?.trim();
+          const sceneName = commands[index + 2]?.trim();
+          const sceneDescription = commands[index + 3]?.trim();
+          if (sceneNumber && sceneName) {
+            scenes.push({
+              number: sceneNumber,
+              name: sceneName,
+              description: sceneDescription || "",
+              elements: [],
+            });
+          }
+          index += 4;
+          break;
+
+        case "AD": // Add Dialog
+          const dialogSceneNumber = commands[index + 1]?.trim();
+          const dialogName = commands[index + 2]?.trim();
+          const dialogDescription = commands[index + 3]?.trim();
+          const dialogText = commands[index + 4]?.trim();
+          if (dialogSceneNumber && dialogName && dialogText) {
+            const sceneIndex = scenes.findIndex((scene) => scene.number === dialogSceneNumber);
+            if (sceneIndex !== -1) {
+              scenes[sceneIndex].elements.push({
+                type: "speech",
+                name: dialogName,
+                description: dialogDescription || "",
+                dialog: dialogText,
+              });
+            }
+          }
+          index += 5;
+          break;
+
+        case "AC": // Add Action
+          const actionSceneNumber = commands[index + 1]?.trim();
+          const actionDescription = commands[index + 2]?.trim();
+          if (actionSceneNumber && actionDescription) {
+            const sceneIndex = scenes.findIndex((scene) => scene.number === actionSceneNumber);
+            if (sceneIndex !== -1) {
+              scenes[sceneIndex].elements.push({
+                type: "action",
+                description: actionDescription,
+              });
+            }
+          }
+          index += 3;
+          break;
+
+        default:
+          console.warn(`Unknown command: ${command}`);
+          index++;
+          break;
+      }
+    }
+
+    renderDocument();
+    document.getElementById("edit-format-input").value = "";
+  }
 };
 
 // Initial Render

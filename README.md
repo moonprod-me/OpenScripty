@@ -5,6 +5,12 @@ A screenwriting convention
 Go to "Write on web" under [Links](README.md#Links), click Import JSON and put the AI result in there.<br>
 Then you click Export Markdown or Preview.
 
+## Formats
+
+* [**OpenScripty.json**](Format.OS.json): The main format for OpenScripty
+
+* [**OpenFunctions.txt**](Format.OF.txt): The OpenScripty format designed to be the most programmatically intuitive when it comes to editing scripts
+
 ## Links
 
 [Write on web](https://openscripty.moonprod.me/web)<br>
