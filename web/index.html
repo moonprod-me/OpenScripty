@@ -103,7 +103,6 @@
       cursor: pointer;
       width: 100%;
     }
-    
     .dropdown-content button:hover {
       background-color: #e2e6ea;
       color: #0056b3;
@@ -170,7 +169,7 @@
     <div>
       <button id="export-json">Export JSON</button>
       <button id="export-markdown">Export Markdown</button>
-      <button id="export-odt">Export ODT</button> <!-- NEW ODT BUTTON -->
+      <button id="export-docx">Export DOCX</button> <!-- DOCX with real headings -->
       <button id="import-json">Import JSON</button>
       <button id="toggle-preview">Preview</button>
     </div>
@@ -185,8 +184,10 @@
   <div id="document"></div>
   <button class="add-scene" id="add-scene">+</button>
 
+  <!-- Include docx from CDN (version 8.x) -->
+  <script src="https://cdn.jsdelivr.net/npm/docx@8.3.2/build/index.js"></script>
+
   <!-- Our main script logic -->
-  <script src="https://cdn.jsdelivr.net/npm/jszip/dist/jszip.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

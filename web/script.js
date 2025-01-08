@@ -1,6 +1,7 @@
 let scenes = [];
 let previewMode = false;
 
+// Render the document in either preview or edit mode
 function renderDocument() {
   const documentDiv = document.getElementById("document");
   documentDiv.innerHTML = "";
@@ -131,7 +132,7 @@ function renderDocument() {
       }
     });
 
-    // Add new elements (speech/action)
+    // Add new elements (speech/action) in Edit Mode
     if (!previewMode) {
       const dropdownDiv = document.createElement("div");
       dropdownDiv.className = "dropdown";
@@ -243,159 +244,101 @@ document.getElementById("export-markdown").onclick = () => {
   link.click();
 };
 
-function exportODT() {
-  // Helper to safely escape <, >, & from user text so it won't break the XML.
-  function xmlEscape(str) {
-    return (str || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
+// ---- DOCX Export with Real Headings ----
+async function exportDOCX() {
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel } = docx;
 
-  // Build up the <office:text> portion by iterating over scenes/elements.
-  let bodyXML = "";
-
-  scenes.forEach((scene, sceneIndex) => {
-    // 1) Scene "heading" as a plain paragraph, with "# " prefix.
-    const sceneNumber = scene.number || `Scene ${sceneIndex + 1}`;
-    const sceneName = scene.name || "Untitled Scene";
-    // Example: "# Scene 1: My Scene"
-    bodyXML += `
-      <text:p>
-        # ${xmlEscape(sceneNumber)}: ${xmlEscape(sceneName)}
-      </text:p>
-    `;
-
-    // 2) If scene has a description, show it in italic.
-    if (scene.description) {
-      const desc = xmlEscape(scene.description);
-      bodyXML += `
-        <text:p>
-          <text:span text:style-name="Italic">${desc}</text:span>
-        </text:p>
-      `;
-    }
-
-    // 3) Scene elements (speech/action)
-    scene.elements.forEach((el) => {
-      if (el.type === "speech") {
-        // a) Bold name
-        const charName = xmlEscape(el.name || "");
-        // b) Parenthetical desc in italic
-        const charDesc = el.description ? `(${xmlEscape(el.description)})` : "";
-        // c) Dialog
-        const dialog = xmlEscape(el.dialog || "");
-
-        // Single paragraph for name + description + next line with "dialog"
-        // Or you could do them in separate paragraphs if you want an extra blank line.
-        // For a simpler approach, let's do them in separate paragraphs:
-        //  - Paragraph for name + (desc)
-        //  - Paragraph for dialog
-        //
-        // This ensures there's *one* blank line between them (default paragraph spacing).
-        if (charName || charDesc) {
-          bodyXML += `
-            <text:p>
-              ${
-                charName
-                  ? `<text:span text:style-name="Bold">${charName}</text:span>`
-                  : ""
-              }
-              ${
-                charDesc
-                  ? ` <text:span text:style-name="Italic">${charDesc}</text:span>`
-                  : ""
-              }
-            </text:p>
-          `;
-        }
-        // Another paragraph for the actual dialog
-        if (dialog) {
-          bodyXML += `
-            <text:p>"${dialog}"</text:p>
-          `;
-        }
-      } else if (el.type === "action") {
-        const actionDesc = xmlEscape(el.description || "");
-        // Just one paragraph in italic
-        bodyXML += `
-          <text:p>
-            <text:span text:style-name="Italic">${actionDesc}</text:span>
-          </text:p>
-        `;
-      }
-    });
+  const doc = new Document({
+    creator: "OpenScripty",
+    title: "Script Export",
+    description: "Generated script with real headings",
   });
 
-  // Now we wrap it in content.xml with minimal styling for bold and italic.
-  const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
-<office:document-content
-  xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
-  xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
-  xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
-  xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
-  office:version="1.2"
->
-  <office:automatic-styles>
+  // Accumulate paragraphs in an array
+  const paragraphs = [];
 
-    <!-- Style for Bold inline text -->
-    <style:style style:name="Bold" style:family="text">
-      <style:text-properties fo:font-weight="bold"/>
-    </style:style>
+  scenes.forEach((scene, sceneIndex) => {
+    const sceneNumber = scene.number || `Scene ${sceneIndex + 1}`;
+    const sceneName = scene.name || "Untitled Scene";
 
-    <!-- Style for Italic inline text -->
-    <style:style style:name="Italic" style:family="text">
-      <style:text-properties fo:font-style="italic"/>
-    </style:style>
+    // 1) Real heading for the scene
+    paragraphs.push(
+      new Paragraph({
+        text: `${sceneNumber}: ${sceneName}`,
+        heading: HeadingLevel.HEADING_1, // real heading
+      })
+    );
 
-  </office:automatic-styles>
+    // 2) Optional scene description
+    if (scene.description) {
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `(${scene.description})`,
+              italics: true,
+            }),
+          ],
+        })
+      );
+    }
 
-  <office:body>
-    <office:text>
-      ${bodyXML}
-    </office:text>
-  </office:body>
-</office:document-content>`;
+    // 3) Elements
+    scene.elements.forEach((el) => {
+      if (el.type === "speech") {
+        const name = el.name || "";
+        const desc = el.description ? `(${el.description})` : "";
+        const dialog = el.dialog || "";
 
-  // The "mimetype" file must be stored uncompressed at the start of the ZIP
-  const mimetype = "application/vnd.oasis.opendocument.text";
+        // Name + (desc) line
+        if (name || desc) {
+          const runs = [];
+          if (name) {
+            runs.push(new TextRun({ text: name, bold: true }));
+          }
+          if (desc) {
+            runs.push(new TextRun({ text: ` ${desc}`, italics: true }));
+          }
+          paragraphs.push(new Paragraph({ children: runs }));
+        }
 
-  // Use JSZip to create the .odt
-  const zip = new JSZip();
-  zip.file("mimetype", mimetype, { compression: "STORE" });
-  zip.file("content.xml", contentXml);
-
-  // Minimal META-INF/manifest.xml
-  const manifestXml = `<?xml version="1.0" encoding="UTF-8"?>
-<manifest:manifest
-  xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"
-  manifest:version="1.2">
-  <manifest:file-entry
-    manifest:full-path="/"
-    manifest:version="1.2"
-    manifest:media-type="application/vnd.oasis.opendocument.text"/>
-  <manifest:file-entry
-    manifest:full-path="content.xml"
-    manifest:media-type="text/xml"/>
-</manifest:manifest>`;
-  zip.folder("META-INF").file("manifest.xml", manifestXml);
-
-  // Generate the ZIP => ODT
-  zip
-    .generateAsync({ type: "blob" })
-    .then((blob) => {
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "script.odt";
-      link.click();
-    })
-    .catch((err) => {
-      console.error("Error generating ODT:", err);
+        // Dialog line
+        if (dialog) {
+          paragraphs.push(new Paragraph(`"${dialog}"`));
+        }
+      } else if (el.type === "action") {
+        // Action in italics
+        const actionText = el.description || "";
+        paragraphs.push(
+          new Paragraph({
+            children: [new TextRun({ text: `(${actionText})`, italics: true })],
+          })
+        );
+      }
     });
+
+    // Blank paragraph after each scene, if desired
+    paragraphs.push(new Paragraph(""));
+  });
+
+  // Add them all to a single doc section
+  doc.addSection({
+    children: paragraphs,
+  });
+
+  try {
+    const blob = await Packer.toBlob(doc);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "script.docx";
+    link.click();
+  } catch (err) {
+    console.error("Error generating DOCX:", err);
+  }
 }
 
-// Hook up the Export ODT button
-document.getElementById("export-odt").onclick = exportODT;
+// Hook up the DOCX export button
+document.getElementById("export-docx").onclick = exportDOCX;
 
 // Import Edit Format
 document.getElementById("import-edit-format").onclick = () => {
