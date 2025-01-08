@@ -1,7 +1,6 @@
 let scenes = [];
 let previewMode = false;
 
-// Render the document in either preview or edit mode
 function renderDocument() {
   const documentDiv = document.getElementById("document");
   documentDiv.innerHTML = "";
@@ -13,9 +12,10 @@ function renderDocument() {
     // Scene Header
     if (previewMode) {
       const sceneHeader = document.createElement("h3");
-      sceneHeader.textContent = `${scene.number || `Scene ${sceneIndex + 1}`}: ${
-        scene.name || "Untitled Scene"
-      }`;
+      // Use scene.number and scene.name or fallback
+      const sceneNumberText = scene.number || `Scene ${sceneIndex + 1}`;
+      const sceneNameText   = scene.name   || "Untitled Scene";
+      sceneHeader.textContent = `${sceneNumberText}: ${sceneNameText}`;
       sceneDiv.appendChild(sceneHeader);
 
       if (scene.description) {
@@ -244,34 +244,29 @@ document.getElementById("export-markdown").onclick = () => {
   link.click();
 };
 
-// ---- DOCX Export with Real Headings ----
+// ---- DOCX Export with docx@9+ style ----
 async function exportDOCX() {
+  // Grab the needed constructors from docx
   const { Document, Packer, Paragraph, TextRun, HeadingLevel } = docx;
 
-  const doc = new Document({
-    creator: "OpenScripty",
-    title: "Script Export",
-    description: "Generated script with real headings",
-  });
-
-  // Accumulate paragraphs in an array
-  const paragraphs = [];
+  // We'll build an array of Paragraphs for all scenes/elements
+  const docParagraphs = [];
 
   scenes.forEach((scene, sceneIndex) => {
     const sceneNumber = scene.number || `Scene ${sceneIndex + 1}`;
     const sceneName = scene.name || "Untitled Scene";
 
-    // 1) Real heading for the scene
-    paragraphs.push(
+    // Real Heading 1 for the scene
+    docParagraphs.push(
       new Paragraph({
         text: `${sceneNumber}: ${sceneName}`,
-        heading: HeadingLevel.HEADING_1, // real heading
+        heading: HeadingLevel.HEADING_1,
       })
     );
 
-    // 2) Optional scene description
+    // Scene Description (if any), italic
     if (scene.description) {
-      paragraphs.push(
+      docParagraphs.push(
         new Paragraph({
           children: [
             new TextRun({
@@ -283,14 +278,14 @@ async function exportDOCX() {
       );
     }
 
-    // 3) Elements
+    // Scene Elements
     scene.elements.forEach((el) => {
       if (el.type === "speech") {
-        const name = el.name || "";
-        const desc = el.description ? `(${el.description})` : "";
+        const name   = el.name || "";
+        const desc   = el.description ? `(${el.description})` : "";
         const dialog = el.dialog || "";
 
-        // Name + (desc) line
+        // "Name (desc)" line
         if (name || desc) {
           const runs = [];
           if (name) {
@@ -299,17 +294,17 @@ async function exportDOCX() {
           if (desc) {
             runs.push(new TextRun({ text: ` ${desc}`, italics: true }));
           }
-          paragraphs.push(new Paragraph({ children: runs }));
+          docParagraphs.push(new Paragraph({ children: runs }));
         }
 
         // Dialog line
         if (dialog) {
-          paragraphs.push(new Paragraph(`"${dialog}"`));
+          docParagraphs.push(new Paragraph(`"${dialog}"`));
         }
       } else if (el.type === "action") {
-        // Action in italics
         const actionText = el.description || "";
-        paragraphs.push(
+        // Action in parentheses + italics
+        docParagraphs.push(
           new Paragraph({
             children: [new TextRun({ text: `(${actionText})`, italics: true })],
           })
@@ -317,17 +312,29 @@ async function exportDOCX() {
       }
     });
 
-    // Blank paragraph after each scene, if desired
-    paragraphs.push(new Paragraph(""));
+    // Optionally add a blank paragraph after each scene
+    docParagraphs.push(new Paragraph(""));
   });
 
-  // Add them all to a single doc section
-  doc.addSection({
-    children: paragraphs,
+  // Now, in docx@9+, we define sections in the Document constructor
+  const doc = new Document({
+    // We can specify metadata here if we want
+    creator: "OpenScripty Web",
+    title: "OpenScripty DOCX Export",
+    description: "This document was made with OpenScripty Web, and was exported to DOCX.",
+
+    // The 'sections' array replaces the old doc.addSection() calls
+    sections: [
+      {
+        children: docParagraphs,
+      },
+    ],
   });
 
   try {
+    // Generate the .docx as a Blob
     const blob = await Packer.toBlob(doc);
+    // Download the file
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "script.docx";
@@ -337,7 +344,6 @@ async function exportDOCX() {
   }
 }
 
-// Hook up the DOCX export button
 document.getElementById("export-docx").onclick = exportDOCX;
 
 // Import Edit Format
@@ -356,56 +362,62 @@ document.getElementById("import-edit-format").onclick = () => {
 
       switch (command) {
         case "AS": // Add Scene
-          const sceneNumber = commands[index + 1]?.trim();
-          const sceneName = commands[index + 2]?.trim();
-          const sceneDescription = commands[index + 3]?.trim();
-          if (sceneNumber && sceneName) {
-            scenes.push({
-              number: sceneNumber,
-              name: sceneName,
-              description: sceneDescription || "",
-              elements: [],
-            });
+          {
+            const sceneNumber      = commands[index + 1]?.trim();
+            const sceneName        = commands[index + 2]?.trim();
+            const sceneDescription = commands[index + 3]?.trim();
+            if (sceneNumber && sceneName) {
+              scenes.push({
+                number: sceneNumber,
+                name: sceneName,
+                description: sceneDescription || "",
+                elements: [],
+              });
+            }
+            index += 4;
           }
-          index += 4;
           break;
 
         case "AD": // Add Dialog
-          const dialogSceneNumber = commands[index + 1]?.trim();
-          const dialogName = commands[index + 2]?.trim();
-          const dialogDescription = commands[index + 3]?.trim();
-          const dialogText = commands[index + 4]?.trim();
-          if (dialogSceneNumber && dialogName && dialogText) {
-            const sceneIndex = scenes.findIndex(
-              (scene) => scene.number === dialogSceneNumber
-            );
-            if (sceneIndex !== -1) {
-              scenes[sceneIndex].elements.push({
-                type: "speech",
-                name: dialogName,
-                description: dialogDescription || "",
-                dialog: dialogText,
-              });
+          {
+            const dialogSceneNumber  = commands[index + 1]?.trim();
+            const dialogName         = commands[index + 2]?.trim();
+            const dialogDescription  = commands[index + 3]?.trim();
+            const dialogText         = commands[index + 4]?.trim();
+            if (dialogSceneNumber && dialogName && dialogText) {
+              const sceneIndex = scenes.findIndex(
+                (scene) => scene.number === dialogSceneNumber
+              );
+              if (sceneIndex !== -1) {
+                scenes[sceneIndex].elements.push({
+                  type: "speech",
+                  name: dialogName,
+                  description: dialogDescription || "",
+                  dialog: dialogText,
+                });
+              }
             }
+            index += 5;
           }
-          index += 5;
           break;
 
         case "AC": // Add Action
-          const actionSceneNumber = commands[index + 1]?.trim();
-          const actionDescription = commands[index + 2]?.trim();
-          if (actionSceneNumber && actionDescription) {
-            const sceneIndex = scenes.findIndex(
-              (scene) => scene.number === actionSceneNumber
-            );
-            if (sceneIndex !== -1) {
-              scenes[sceneIndex].elements.push({
-                type: "action",
-                description: actionDescription,
-              });
+          {
+            const actionSceneNumber  = commands[index + 1]?.trim();
+            const actionDescription  = commands[index + 2]?.trim();
+            if (actionSceneNumber && actionDescription) {
+              const sceneIndex = scenes.findIndex(
+                (scene) => scene.number === actionSceneNumber
+              );
+              if (sceneIndex !== -1) {
+                scenes[sceneIndex].elements.push({
+                  type: "action",
+                  description: actionDescription,
+                });
+              }
             }
+            index += 3;
           }
-          index += 3;
           break;
 
         default:
