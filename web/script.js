@@ -12,7 +12,9 @@ function renderDocument() {
     // Scene Header
     if (previewMode) {
       const sceneHeader = document.createElement("h3");
-      sceneHeader.textContent = `${scene.number || `Scene ${sceneIndex + 1}`}: ${scene.name || "Untitled Scene"}`;
+      sceneHeader.textContent = `${scene.number || `Scene ${sceneIndex + 1}`}: ${
+        scene.name || "Untitled Scene"
+      }`;
       sceneDiv.appendChild(sceneHeader);
 
       if (scene.description) {
@@ -67,8 +69,9 @@ function renderDocument() {
       if (previewMode) {
         if (element.type === "speech") {
           const speechEl = document.createElement("p");
-          speechEl.innerHTML = `<strong>${element.name}</strong> ${element.description ? `<i>(${element.description})</i>` : ""
-            }<br>"${element.dialog}"`;
+          speechEl.innerHTML = `<strong>${element.name}</strong> ${
+            element.description ? `<i>(${element.description})</i>` : ""
+          }<br>"${element.dialog}"`;
           sceneDiv.appendChild(speechEl);
         } else if (element.type === "action") {
           const actionEl = document.createElement("p");
@@ -128,6 +131,7 @@ function renderDocument() {
       }
     });
 
+    // Add new elements (speech/action)
     if (!previewMode) {
       const dropdownDiv = document.createElement("div");
       dropdownDiv.className = "dropdown";
@@ -138,22 +142,34 @@ function renderDocument() {
         dropdownDiv.querySelector(".dropdown-content").classList.toggle("show");
       };
       dropdownDiv.appendChild(addButton);
+
       const dropdownContent = document.createElement("div");
       dropdownContent.className = "dropdown-content";
+
       const addSpeechButton = document.createElement("button");
       addSpeechButton.textContent = "Add Speech";
       addSpeechButton.onclick = () => {
-        scenes[sceneIndex].elements.push({ type: "speech", name: "", description: "", dialog: "" });
-        renderDocument();
-      };
-      const addActionButton = document.createElement("button");
-      addActionButton.textContent = "Add Action";
-      addActionButton.onclick = () => {
-        scenes[sceneIndex].elements.push({ type: "action", description: "" });
+        scenes[sceneIndex].elements.push({
+          type: "speech",
+          name: "",
+          description: "",
+          dialog: "",
+        });
         renderDocument();
       };
       dropdownContent.appendChild(addSpeechButton);
+
+      const addActionButton = document.createElement("button");
+      addActionButton.textContent = "Add Action";
+      addActionButton.onclick = () => {
+        scenes[sceneIndex].elements.push({
+          type: "action",
+          description: "",
+        });
+        renderDocument();
+      };
       dropdownContent.appendChild(addActionButton);
+
       dropdownDiv.appendChild(dropdownContent);
       sceneDiv.appendChild(dropdownDiv);
     }
@@ -206,17 +222,17 @@ document.getElementById("import-json").onclick = () => {
 // Export Markdown
 document.getElementById("export-markdown").onclick = () => {
   const markdown = scenes
-    .map(
-      (scene) =>
-        `# ${scene.number || `Scene ${scene.index + 1}`}: ${scene.name || "Untitled Scene"}\n${scene.description ? `*${scene.description}*\n` : ""
-        }` +
-        scene.elements
-          .map((el) =>
-            el.type === "speech"
-              ? `<br><br>**${el.name}**${el.description ? ` *(${el.description})*` : ""}\n<br>"${el.dialog}"`
-              : `<br><br>*${el.description}*`
-          )
-          .join("\n")
+    .map((scene, idx) =>
+      `# ${scene.number || `Scene ${idx + 1}`}: ${scene.name || "Untitled Scene"}\n${
+        scene.description ? `*${scene.description}*\n` : ""
+      }` +
+      scene.elements
+        .map((el) =>
+          el.type === "speech"
+            ? `<br><br>**${el.name}**${el.description ? ` *(${el.description})*` : ""}\n<br>"${el.dialog}"`
+            : `<br><br>*${el.description}*`
+        )
+        .join("\n")
     )
     .join("\n\n");
 
@@ -226,6 +242,107 @@ document.getElementById("export-markdown").onclick = () => {
   link.download = "script.md";
   link.click();
 };
+
+// ---- NEW: Minimal ODT Export ----
+function exportODT() {
+  /*
+    This is a *very* simplified example of creating an ODT file as a ZIP
+    with a few critical files (mimetype, content.xml, etc.). Real ODT files
+    have more structure (META-INF/manifest.xml, styles.xml, etc.).
+
+    For more robust solutions, use an existing library.
+  */
+
+  // Convert scenes data into a single text string
+  let textContent = scenes
+    .map((scene, sceneIndex) => {
+      const sceneTitle = `${scene.number || `Scene ${sceneIndex + 1}`}: ${
+        scene.name || "Untitled Scene"
+      }`;
+      const sceneDesc = scene.description ? `(${scene.description})` : "";
+
+      const elementText = scene.elements
+        .map((el) => {
+          if (el.type === "speech") {
+            return `${el.name.toUpperCase()}${el.description ? ` (${el.description})` : ""}:\n${
+              el.dialog
+            }`;
+          } else if (el.type === "action") {
+            return `ACTION: ${el.description}`;
+          }
+          return "";
+        })
+        .join("\n\n");
+
+      return `${sceneTitle}\n${sceneDesc}\n\n${elementText}`;
+    })
+    .join("\n\n--------\n\n");
+
+  // Minimal "content.xml" for ODT
+  const contentXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<office:document-content ` +
+    `xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" ` +
+    `xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" ` +
+    `xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" ` +
+    `office:version="1.2">` +
+    `<office:body>` +
+    `<office:text>` +
+    `<text:p>` +
+    // Escape special XML characters
+    textContent.replace(/&/g, "&amp;").replace(/</g, "&lt;")  
+               .replace(/>/g, "&gt;").replace(/\n/g, "</text:p><text:p>") +
+    `</text:p>` +
+    `</office:text>` +
+    `</office:body>` +
+    `</office:document-content>`;
+
+  // "mimetype" must be stored without compression at the very start of the ZIP
+  const mimetype = "application/vnd.oasis.opendocument.text";
+
+  // Use JSZip (or similar) to create the ODT file
+  // If you don't already have JSZip, add a <script> reference:
+  // <script src="https://cdn.jsdelivr.net/npm/jszip/dist/jszip.min.js"></script>
+  // For this snippet, we'll assume it's loaded in the page:
+  const zip = new JSZip();
+
+  // 1) Add mimetype file (uncompressed)
+  zip.file("mimetype", mimetype, { compression: "STORE" });
+
+  // 2) Minimal "content.xml"
+  zip.file("content.xml", contentXml);
+
+  // 3) Minimal "META-INF/manifest.xml" – required by many ODT readers
+  const manifestXml = `<?xml version="1.0" encoding="UTF-8"?>
+  <manifest:manifest
+    xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"
+    manifest:version="1.2">
+    <manifest:file-entry
+      manifest:full-path="/"
+      manifest:version="1.2"
+      manifest:media-type="application/vnd.oasis.opendocument.text"/>
+    <manifest:file-entry
+      manifest:full-path="content.xml"
+      manifest:media-type="text/xml"/>
+  </manifest:manifest>`;
+  zip.folder("META-INF").file("manifest.xml", manifestXml);
+
+  // Generate the ZIP => ODT
+  zip
+    .generateAsync({ type: "blob" })
+    .then((content) => {
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(content);
+      link.download = "script.odt";
+      link.click();
+    })
+    .catch((err) => {
+      console.error("Error generating ODT:", err);
+    });
+}
+
+// Hook up the Export ODT button
+document.getElementById("export-odt").onclick = exportODT;
 
 // Import Edit Format
 document.getElementById("import-edit-format").onclick = () => {
@@ -263,7 +380,9 @@ document.getElementById("import-edit-format").onclick = () => {
           const dialogDescription = commands[index + 3]?.trim();
           const dialogText = commands[index + 4]?.trim();
           if (dialogSceneNumber && dialogName && dialogText) {
-            const sceneIndex = scenes.findIndex((scene) => scene.number === dialogSceneNumber);
+            const sceneIndex = scenes.findIndex(
+              (scene) => scene.number === dialogSceneNumber
+            );
             if (sceneIndex !== -1) {
               scenes[sceneIndex].elements.push({
                 type: "speech",
@@ -280,7 +399,9 @@ document.getElementById("import-edit-format").onclick = () => {
           const actionSceneNumber = commands[index + 1]?.trim();
           const actionDescription = commands[index + 2]?.trim();
           if (actionSceneNumber && actionDescription) {
-            const sceneIndex = scenes.findIndex((scene) => scene.number === actionSceneNumber);
+            const sceneIndex = scenes.findIndex(
+              (scene) => scene.number === actionSceneNumber
+            );
             if (sceneIndex !== -1) {
               scenes[sceneIndex].elements.push({
                 type: "action",
