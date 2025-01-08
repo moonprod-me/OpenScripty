@@ -244,91 +244,80 @@ document.getElementById("export-markdown").onclick = () => {
 };
 
 function exportODT() {
-  /*
-    We'll build a minimal content.xml containing:
-      - Automatic styles for Heading1, Bold, Italic
-      - <text:h> for scene headings
-      - Blank paragraphs (<text:p/>) to simulate "\n\n"
-      - <text:p><text:span text:style-name="Bold">...</text:span></text:p> for bold name
-      - <text:p><text:span text:style-name="Italic">...</text:span></text:p> for italic text
-  */
-
-  // Escapes <, >, & in user text so it doesn't break the XML
-  const xmlEscape = (str) =>
-    (str || "")
+  // Helper to safely escape <, >, & from user text so it won't break the XML.
+  function xmlEscape(str) {
+    return (str || "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
+  }
 
-  // Build up the XML for the body (<office:text>)
+  // Build up the <office:text> portion by iterating over scenes/elements.
   let bodyXML = "";
 
   scenes.forEach((scene, sceneIndex) => {
-    // 1) Scene Heading
-    const sceneNum = scene.number || `Scene ${sceneIndex + 1}`;
+    // 1) Scene "heading" as a plain paragraph, with "# " prefix.
+    const sceneNumber = scene.number || `Scene ${sceneIndex + 1}`;
     const sceneName = scene.name || "Untitled Scene";
+    // Example: "# Scene 1: My Scene"
     bodyXML += `
-      <text:h text:style-name="Heading1" text:outline-level="1">
-        ${xmlEscape(sceneNum)}: ${xmlEscape(sceneName)}
-      </text:h>
+      <text:p>
+        # ${xmlEscape(sceneNumber)}: ${xmlEscape(sceneName)}
+      </text:p>
     `;
 
-    // 2) Scene Description as optional italic paragraph
+    // 2) If scene has a description, show it in italic.
     if (scene.description) {
+      const desc = xmlEscape(scene.description);
       bodyXML += `
         <text:p>
-          <text:span text:style-name="Italic">
-            ${xmlEscape(scene.description)}
-          </text:span>
+          <text:span text:style-name="Italic">${desc}</text:span>
         </text:p>
       `;
     }
 
-    // 3) Elements (dialog or action)
+    // 3) Scene elements (speech/action)
     scene.elements.forEach((el) => {
       if (el.type === "speech") {
-        const name = xmlEscape(el.name);
-        const desc = el.description ? `(${xmlEscape(el.description)})` : "";
-        const dialog = xmlEscape(el.dialog);
+        // a) Bold name
+        const charName = xmlEscape(el.name || "");
+        // b) Parenthetical desc in italic
+        const charDesc = el.description ? `(${xmlEscape(el.description)})` : "";
+        // c) Dialog
+        const dialog = xmlEscape(el.dialog || "");
 
-        // Insert two blank lines before a dialog
-        bodyXML += `
-          <text:p/>
-          <text:p/>
-        `;
-
-        // A paragraph with bold Name + italic desc (if any)
-        if (name || desc) {
+        // Single paragraph for name + description + next line with "dialog"
+        // Or you could do them in separate paragraphs if you want an extra blank line.
+        // For a simpler approach, let's do them in separate paragraphs:
+        //  - Paragraph for name + (desc)
+        //  - Paragraph for dialog
+        //
+        // This ensures there's *one* blank line between them (default paragraph spacing).
+        if (charName || charDesc) {
           bodyXML += `
             <text:p>
               ${
-                name
-                  ? `<text:span text:style-name="Bold">${name}</text:span>`
+                charName
+                  ? `<text:span text:style-name="Bold">${charName}</text:span>`
                   : ""
               }
               ${
-                desc
-                  ? ` <text:span text:style-name="Italic">${desc}</text:span>`
+                charDesc
+                  ? ` <text:span text:style-name="Italic">${charDesc}</text:span>`
                   : ""
               }
             </text:p>
           `;
         }
-
-        // Another paragraph for the actual dialog line
+        // Another paragraph for the actual dialog
         if (dialog) {
           bodyXML += `
             <text:p>"${dialog}"</text:p>
           `;
         }
       } else if (el.type === "action") {
-        // Insert two blank lines before an action
-        bodyXML += `
-          <text:p/>
-          <text:p/>
-        `;
-        const actionDesc = xmlEscape(el.description);
-        // Wrap it in italics
+        const actionDesc = xmlEscape(el.description || "");
+        // Just one paragraph in italic
         bodyXML += `
           <text:p>
             <text:span text:style-name="Italic">${actionDesc}</text:span>
@@ -338,7 +327,7 @@ function exportODT() {
     });
   });
 
-  // Now wrap bodyXML in a minimal content.xml with automatic styles
+  // Now we wrap it in content.xml with minimal styling for bold and italic.
   const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
 <office:document-content
   xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
@@ -349,18 +338,12 @@ function exportODT() {
 >
   <office:automatic-styles>
 
-    <!-- Heading1 style for scene headings -->
-    <style:style style:name="Heading1" style:family="paragraph">
-      <style:paragraph-properties fo:margin-bottom="0.1in"/>
-      <style:text-properties fo:font-size="16pt" fo:font-weight="bold"/>
-    </style:style>
-
-    <!-- Bold inline style for speaker names -->
+    <!-- Style for Bold inline text -->
     <style:style style:name="Bold" style:family="text">
       <style:text-properties fo:font-weight="bold"/>
     </style:style>
 
-    <!-- Italic inline style for descriptions/action -->
+    <!-- Style for Italic inline text -->
     <style:style style:name="Italic" style:family="text">
       <style:text-properties fo:font-style="italic"/>
     </style:style>
@@ -374,7 +357,7 @@ function exportODT() {
   </office:body>
 </office:document-content>`;
 
-  // "mimetype" must be stored uncompressed at start of the ZIP
+  // The "mimetype" file must be stored uncompressed at the start of the ZIP
   const mimetype = "application/vnd.oasis.opendocument.text";
 
   // Use JSZip to create the .odt
