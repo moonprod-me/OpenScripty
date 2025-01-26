@@ -2,7 +2,7 @@
 A screenwriting convention
 
 ## Read AI Results
-Go to "Write on web" under [Links](README.md#links), click Import JSON and put the AI result in there.<br>
+Go to "Write on web" under [Links](#links), click Import JSON and put the AI result in there.<br>
 Then you click Export Markdown or Preview.
 
 ## Formats
